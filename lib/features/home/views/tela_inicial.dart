@@ -9,6 +9,7 @@ import '../../pet/views/tela_perfil_pet.dart';
 import '../../pet/views/tela_detalhes_pet.dart';
 import '../../ajustes/views/tela_ajustes.dart';
 import '../../familia/views/tela_familia.dart';
+import '../widgets/acoes_e_linha_do_tempo.dart';
 
 class TelaInicial extends StatefulWidget {
   const TelaInicial({super.key});
@@ -116,9 +117,7 @@ class _TelaInicialState extends State<TelaInicial> {
                   const SizedBox(height: 20),
                   if (_petAtual != null) _construirDicaPreditiva(),
                   const SizedBox(height: 24),
-                  _construirSecaoAcoesRapidas(),
-                  const SizedBox(height: 24),
-                  _construirSecaoLinhaDoTempo(),
+                  AcoesELinhaDoTempo(idPet: _petAtual?.idPet),
                 ],
               ),
             ),
@@ -397,130 +396,6 @@ class _TelaInicialState extends State<TelaInicial> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _construirSecaoAcoesRapidas() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Ações Rápidas',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _botaoAcao(
-                  Icons.food_bank,
-                  'Alimentar',
-                  const Color(0xFFFBE4D8),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _botaoAcao(
-                  Icons.water_drop,
-                  'Água',
-                  const Color(0xFFDCE8FF),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _botaoAcao(
-                  Icons.pets,
-                  'Passeio',
-                  const Color(0xFFE2F5E9),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _botaoAcao(
-                  Icons.medication,
-                  'Remédio',
-                  const Color(0xFFFFE2E5),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _botaoAcao(IconData icone, String titulo, Color corFundo) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            backgroundColor: corFundo,
-            radius: 20,
-            child: Icon(icone, color: Colors.black54, size: 20),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            titulo,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black87,
-            ), // Fonte um pouco menor (11) para caber bem
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _construirSecaoLinhaDoTempo() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                // ADICIONADO: Expanded para evitar overflow
-                child: Text(
-                  'Linha do Tempo',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              Row(
-                children: [
-                  Icon(Icons.cloud_done, color: Colors.green, size: 16),
-                  SizedBox(width: 4),
-                  Text(
-                    'Sincronizado',
-                    style: TextStyle(color: Colors.green, fontSize: 12),
-                  ), // Texto reduzido para caber melhor
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Os registros da timeline virão aqui...',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
       ),
     );
   }
