@@ -9,6 +9,7 @@ import '../../pet/views/tela_perfil_pet.dart';
 import '../../pet/views/tela_detalhes_pet.dart';
 import '../../ajustes/views/tela_ajustes.dart';
 import '../../familia/views/tela_familia.dart';
+import '../../saude/views/tela_saude.dart';
 import '../widgets/acoes_e_linha_do_tempo.dart';
 
 class TelaInicial extends StatefulWidget {
@@ -18,10 +19,13 @@ class TelaInicial extends StatefulWidget {
   State<TelaInicial> createState() => _TelaInicialState();
 }
 
-class _TelaInicialState extends State<TelaInicial> {
+class _TelaInicialState extends State<TelaInicial> with WidgetsBindingObserver {
   // Instancia o repositório que criamos
   final PetRepository _repositorio = PetRepository();
   StreamSubscription<List<PetModel>>? _assinaturaPets;
+  Timer? _temporizadorReconexao;
+  int _tentativasReconexao = 0;
+  bool _reconectandoPets = false;
   String? _erroPets;
   // Agora usamos a classe PetModel em vez de um Map genérico
   List<PetModel> _pets = [];
@@ -31,13 +35,70 @@ class _TelaInicialState extends State<TelaInicial> {
   @override
   void initState() {
     super.initState();
-    _observarPets();
+    WidgetsBinding.instance.addObserver(this);
+    _reconectarPets();
+  }
+
+  Future<void> _reconectarPets() async {
+    if (!mounted || _reconectandoPets) return;
+
+    _reconectandoPets = true;
+    _temporizadorReconexao?.cancel();
+
+    try {
+      final auth = Supabase.instance.client.auth;
+
+      if (auth.currentSession?.isExpired == true) {
+        await auth.refreshSession();
+      }
+
+      if (!mounted) return;
+
+      if (auth.currentSession == null) {
+        throw StateError('Sua sessão terminou. Entre novamente na conta.');
+      }
+
+      await _assinaturaPets?.cancel();
+      if (!mounted) return;
+
+      _observarPets();
+    } catch (erro) {
+      if (!mounted) return;
+
+      debugPrint('Erro ao reconectar pets: $erro');
+
+      setState(() {
+        _carregando = false;
+        _erroPets = 'Não foi possível conectar aos pets.';
+      });
+
+      _agendarReconexao();
+    } finally {
+      _reconectandoPets = false;
+    }
+  }
+
+  void _agendarReconexao() {
+    if (!mounted || (_temporizadorReconexao?.isActive ?? false)) return;
+
+    // Espera progressivamente: 3, 6, 12, 24, 48 e depois 60 segundos.
+    final segundos = _tentativasReconexao < 5
+        ? 3 * (1 << _tentativasReconexao)
+        : 60;
+
+    _tentativasReconexao++;
+
+    _temporizadorReconexao = Timer(Duration(seconds: segundos), () {
+      _reconectarPets();
+    });
   }
 
   void _observarPets() {
     _assinaturaPets = _repositorio.observarPets().listen(
       (petsEncontrados) {
         if (!mounted) return;
+        _tentativasReconexao = 0;
+        _temporizadorReconexao?.cancel();
 
         PetModel? petSelecionado;
 
@@ -71,13 +132,24 @@ class _TelaInicialState extends State<TelaInicial> {
           _carregando = false;
           _erroPets = 'Não foi possível acompanhar os pets: $erro';
         });
+        debugPrint('Erro no Realtime dos pets: $erro');
+        _agendarReconexao();
       },
     );
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_atualizarPets());
+    }
+  }
+
+  @override
   void dispose() {
+    _temporizadorReconexao?.cancel();
     _assinaturaPets?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -102,23 +174,82 @@ class _TelaInicialState extends State<TelaInicial> {
     return meuId != null && pet.idTutor == meuId;
   }
 
+  Future<void> _atualizarPets() async {
+    try {
+      await _reconectarPets();
+
+      final petsEncontrados = await _repositorio.buscarPets();
+      if (!mounted) return;
+
+      PetModel? petSelecionado = petsEncontrados.isEmpty
+          ? null
+          : petsEncontrados.first;
+
+      final idPetAtual = _petAtual?.idPet;
+
+      if (idPetAtual != null) {
+        for (final pet in petsEncontrados) {
+          if (pet.idPet == idPetAtual) {
+            petSelecionado = pet;
+            break;
+          }
+        }
+      }
+
+      setState(() {
+        _pets = petsEncontrados;
+        _petAtual = petSelecionado;
+        _carregando = false;
+        _erroPets = null;
+      });
+    } catch (erro) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível atualizar os pets: $erro')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _carregando
           ? const Center(child: CircularProgressIndicator())
           : _erroPets != null
-          ? Center(child: Text(_erroPets!))
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _construirCabecalhoCorpo(),
-                  const SizedBox(height: 20),
-                  if (_petAtual != null) _construirDicaPreditiva(),
-                  const SizedBox(height: 24),
-                  AcoesELinhaDoTempo(idPet: _petAtual?.idPet),
-                ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'A conexão com os pets foi interrompida.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _reconectarPets,
+                      child: const Text('Tentar novamente'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _atualizarPets,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _construirCabecalhoCorpo(),
+                    const SizedBox(height: 20),
+                    if (_petAtual != null) _construirDicaPreditiva(),
+                    const SizedBox(height: 24),
+                    AcoesELinhaDoTempo(idPet: _petAtual?.idPet),
+                  ],
+                ),
               ),
             ),
       bottomNavigationBar: _construirBarraNavegacao(),
@@ -427,7 +558,31 @@ class _TelaInicialState extends State<TelaInicial> {
               child: _iconeBarra(Icons.people, 'Família', false),
             ),
             const SizedBox(width: 40),
-            _iconeBarra(Icons.health_and_safety, 'Saúde', false),
+            InkWell(
+              onTap: () {
+                final pet = _petAtual;
+                final idPet = pet?.idPet;
+
+                if (idPet == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Selecione um pet primeiro.')),
+                  );
+                  return;
+                }
+
+                Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TelaSaude(
+                      idPet: idPet,
+                      nomePet: pet!.nome,
+                      souTutor: _souTutor(pet),
+                    ),
+                  ),
+                );
+              },
+              child: _iconeBarra(Icons.health_and_safety, 'Saúde', false),
+            ),
             InkWell(
               onTap: () {
                 Navigator.push<void>(
