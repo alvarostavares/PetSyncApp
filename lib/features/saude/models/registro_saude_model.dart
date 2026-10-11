@@ -14,6 +14,7 @@ class RegistroSaudeModel {
   final TipoRegistroSaude tipo;
   final String titulo;
   final DateTime dataEvento;
+  final DateTime? dataProximaDose;
   final String? observacoes;
   final String? criadoPor;
 
@@ -22,6 +23,7 @@ class RegistroSaudeModel {
     required this.tipo,
     required this.titulo,
     required this.dataEvento,
+    required this.dataProximaDose,
     required this.observacoes,
     required this.criadoPor,
   });
@@ -32,6 +34,9 @@ class RegistroSaudeModel {
       tipo: TipoRegistroSaude.values.byName(dados['tipo'] as String),
       titulo: dados['titulo'] as String,
       dataEvento: DateTime.parse(dados['data_evento'] as String),
+      dataProximaDose: dados['data_proxima_dose'] == null
+          ? null
+          : DateTime.parse(dados['data_proxima_dose'] as String),
       observacoes: dados['observacoes'] as String?,
       criadoPor: dados['criado_por'] as String?,
     );

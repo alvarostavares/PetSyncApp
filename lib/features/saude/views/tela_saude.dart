@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/registro_saude_model.dart';
 import '../repositories/registro_saude_repository.dart';
+import '../views/tela_ficha_emergencia.dart';
 
 class TelaSaude extends StatefulWidget {
   final int idPet;
@@ -30,6 +31,7 @@ class _TelaSaudeState extends State<TelaSaude> {
 
   TipoRegistroSaude _tipo = TipoRegistroSaude.vacina;
   DateTime _dataEvento = DateTime.now();
+  DateTime? _dataProximaDose;
   bool _mostrarFormulario = false;
   bool _salvando = false;
   int? _idExcluindo;
@@ -57,7 +59,37 @@ class _TelaSaudeState extends State<TelaSaude> {
 
     if (!mounted || dataEscolhida == null) return;
 
-    setState(() => _dataEvento = dataEscolhida);
+    setState(() {
+      _dataEvento = dataEscolhida;
+
+      if (_dataProximaDose != null &&
+          !_dataProximaDose!.isAfter(dataEscolhida)) {
+        _dataProximaDose = null;
+      }
+    });
+  }
+
+  Future<void> _selecionarProximaDose() async {
+    final primeiraData = DateTime(
+      _dataEvento.year,
+      _dataEvento.month,
+      _dataEvento.day + 1,
+    );
+
+    final hoje = DateUtils.dateOnly(DateTime.now());
+    final dataInicial =
+        _dataProximaDose ?? (hoje.isAfter(primeiraData) ? hoje : primeiraData);
+
+    final dataEscolhida = await showDatePicker(
+      context: context,
+      initialDate: dataInicial,
+      firstDate: primeiraData,
+      lastDate: DateTime(2100, 12, 31),
+    );
+
+    if (!mounted || dataEscolhida == null) return;
+
+    setState(() => _dataProximaDose = dataEscolhida);
   }
 
   Future<void> _salvar() async {
@@ -71,6 +103,9 @@ class _TelaSaudeState extends State<TelaSaude> {
         tipo: _tipo,
         titulo: _tituloController.text,
         dataEvento: _dataEvento,
+        dataProximaDose: _tipo == TipoRegistroSaude.vacina
+            ? _dataProximaDose
+            : null,
         observacoes: _observacoesController.text,
       );
 
@@ -83,6 +118,7 @@ class _TelaSaudeState extends State<TelaSaude> {
         _mostrarFormulario = false;
         _tipo = TipoRegistroSaude.vacina;
         _dataEvento = DateTime.now();
+        _dataProximaDose = null;
       });
 
       ScaffoldMessenger.of(
@@ -183,6 +219,22 @@ class _TelaSaudeState extends State<TelaSaude> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => TelaFichaEmergencia(
+                      idPet: widget.idPet,
+                      nomePet: widget.nomePet,
+                      souTutor: widget.souTutor,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.health_and_safety_outlined),
+              label: const Text('Ficha de emergência'),
+            ),
+            const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: _salvando
                   ? null
@@ -222,7 +274,12 @@ class _TelaSaudeState extends State<TelaSaude> {
                               ? null
                               : (tipo) {
                                   if (tipo != null) {
-                                    setState(() => _tipo = tipo);
+                                    setState(() {
+                                      _tipo = tipo;
+                                      if (tipo != TipoRegistroSaude.vacina) {
+                                        _dataProximaDose = null;
+                                      }
+                                    });
                                   }
                                 },
                         ),
@@ -248,6 +305,28 @@ class _TelaSaudeState extends State<TelaSaude> {
                             'Data: ${formatoData.formatShortDate(_dataEvento)}',
                           ),
                         ),
+                        if (_tipo == TipoRegistroSaude.vacina) ...[
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: _salvando
+                                ? null
+                                : _selecionarProximaDose,
+                            icon: const Icon(Icons.event),
+                            label: Text(
+                              _dataProximaDose == null
+                                  ? 'Definir próxima dose (opcional)'
+                                  : 'Próxima dose: ${formatoData.formatShortDate(_dataProximaDose!)}',
+                            ),
+                          ),
+                          if (_dataProximaDose != null)
+                            TextButton(
+                              onPressed: _salvando
+                                  ? null
+                                  : () =>
+                                        setState(() => _dataProximaDose = null),
+                              child: const Text('Remover próxima dose'),
+                            ),
+                        ],
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _observacoesController,
@@ -313,7 +392,8 @@ class _TelaSaudeState extends State<TelaSaude> {
                             '${registro.tipo.rotulo} • '
                             '${formatoData.formatShortDate(registro.dataEvento)}'
                             '${registro.observacoes?.isNotEmpty == true ? '\n${registro.observacoes}' : ''}'
-                            '\n${registro.criadoPor == idUsuario ? 'Registrado por você' : 'Registrado por um familiar'}',
+                            '${registro.dataProximaDose == null ? '' : '\nPróxima dose: ${formatoData.formatShortDate(registro.dataProximaDose!)}'}'
+                            '\nRegistrado por ${registro.criadoPor == idUsuario ? 'você' : (registro.nomeAutor?.isNotEmpty == true ? registro.nomeAutor! : 'um familiar')}',
                           ),
                           trailing:
                               widget.souTutor ||

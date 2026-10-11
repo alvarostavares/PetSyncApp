@@ -24,25 +24,33 @@ class RegistroSaudeRepository {
     required TipoRegistroSaude tipo,
     required String titulo,
     required DateTime dataEvento,
+    DateTime? dataProximaDose,
     String? observacoes,
   }) async {
-    final idUsuario = _supabase.auth.currentUser?.id;
-
+    final usuario = _supabase.auth.currentUser;
+    final idUsuario = usuario?.id;
+    final nomeAutor = usuario?.email?.split('@').first ?? 'Familiar';
     if (idUsuario == null) {
       throw StateError('Entre na sua conta para registrar a saúde do pet.');
     }
+    String formatarData(DateTime data) {
+      return '${data.year.toString().padLeft(4, '0')}-'
+          '${data.month.toString().padLeft(2, '0')}-'
+          '${data.day.toString().padLeft(2, '0')}';
+    }
 
-    final dataBanco =
-        '${dataEvento.year.toString().padLeft(4, '0')}-'
-        '${dataEvento.month.toString().padLeft(2, '0')}-'
-        '${dataEvento.day.toString().padLeft(2, '0')}';
+    final dataBanco = formatarData(dataEvento);
 
     await _supabase.from('registro_saude').insert({
       'id_pet': idPet,
+      'nome_autor': nomeAutor,
       'criado_por': idUsuario,
       'tipo': tipo.name,
       'titulo': titulo.trim(),
       'data_evento': dataBanco,
+      'data_proxima_dose': dataProximaDose == null
+          ? null
+          : formatarData(dataProximaDose),
       'observacoes': observacoes?.trim().isEmpty == true
           ? null
           : observacoes?.trim(),
