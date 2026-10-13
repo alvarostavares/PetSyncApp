@@ -44,6 +44,7 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
       TipoAtividade.alimentar => 'Alimentar',
       TipoAtividade.agua => 'Água',
       TipoAtividade.passeio => 'Passeio',
+      TipoAtividade.remedio => 'Remédio',
     };
   }
 
@@ -52,17 +53,27 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
       TipoAtividade.alimentar => Icons.food_bank,
       TipoAtividade.agua => Icons.water_drop,
       TipoAtividade.passeio => Icons.pets,
+      TipoAtividade.remedio => Icons.medication,
     };
   }
 
-  Future<void> _registrar(TipoAtividade tipo) async {
+  Future<void> _registrar(
+    TipoAtividade tipo, {
+    String? nomeMedicamento,
+    String? doseInformada,
+  }) async {
     final idPet = widget.idPet;
     if (idPet == null || _salvando) return;
 
     setState(() => _salvando = true);
 
     try {
-      await _repositorio.registrar(idPet, tipo);
+      await _repositorio.registrar(
+        idPet,
+        tipo,
+        nomeMedicamento: nomeMedicamento,
+        doseInformada: doseInformada,
+      );
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,6 +90,76 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
         setState(() => _salvando = false);
       }
     }
+  }
+
+  Future<void> _registrarRemedio() async {
+    if (widget.idPet == null || _salvando) return;
+
+    final formKey = GlobalKey<FormState>();
+    String nome = '';
+    String dose = '';
+
+    final dados = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Registrar remédio'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  maxLength: 120,
+                  decoration: const InputDecoration(
+                    labelText: 'Medicamento',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (valor) => nome = valor,
+                  validator: (valor) => valor == null || valor.trim().isEmpty
+                      ? 'Informe o medicamento'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  maxLength: 120,
+                  decoration: const InputDecoration(
+                    labelText: 'Dose administrada (opcional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (valor) => dose = valor,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+
+              Navigator.pop(dialogContext, {
+                'nome': nome.trim(),
+                'dose': dose.trim(),
+              });
+            },
+            child: const Text('Registrar'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || dados == null) return;
+
+    await _registrar(
+      TipoAtividade.remedio,
+      nomeMedicamento: dados['nome'],
+      doseInformada: dados['dose'],
+    );
   }
 
   Widget _botaoAcao(
@@ -107,7 +188,13 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
             borderRadius: BorderRadius.circular(16),
             onTap: tipo == null || widget.idPet == null || _salvando
                 ? null
-                : () => _registrar(tipo),
+                : () {
+                    if (tipo == TipoAtividade.remedio) {
+                      _registrarRemedio();
+                    } else {
+                      _registrar(tipo);
+                    }
+                  },
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -180,7 +267,7 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
                   Icons.medication,
                   'Remédio',
                   const Color(0xFFFFE2E5),
-                  null,
+                  TipoAtividade.remedio,
                 ),
               ),
             ],
@@ -219,11 +306,21 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(_icone(atividade.tipo)),
-                        title: Text(_rotulo(atividade.tipo)),
+                        title: Text(
+                          atividade.tipo == TipoAtividade.remedio
+                              ? 'Remédio: ${atividade.nomeMedicamento ?? 'não informado'}'
+                              : _rotulo(atividade.tipo),
+                        ),
                         subtitle: Text(
-                          atividade.criadoPor == idUsuario
-                              ? 'Registrado por você'
-                              : 'Registrado por um familiar',
+                          [
+                            if (atividade.tipo == TipoAtividade.remedio &&
+                                atividade.doseInformada?.isNotEmpty == true)
+                              'Dose informada: ${atividade.doseInformada}',
+                            idUsuario != null &&
+                                    atividade.criadoPor == idUsuario
+                                ? 'Registrado por você'
+                                : 'Registrado por ${atividade.nomeAutor?.isNotEmpty == true ? atividade.nomeAutor : 'um familiar'}',
+                          ].join('\n'),
                         ),
                         trailing: Text(
                           '${MaterialLocalizations.of(context).formatShortDate(atividade.ocorridoEm)}\n'

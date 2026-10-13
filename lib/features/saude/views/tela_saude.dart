@@ -92,6 +92,11 @@ class _TelaSaudeState extends State<TelaSaude> {
     setState(() => _dataProximaDose = dataEscolhida);
   }
 
+  bool _permiteProximaDose(TipoRegistroSaude tipo) {
+    return tipo == TipoRegistroSaude.vacina ||
+        tipo == TipoRegistroSaude.vermifugacao;
+  }
+
   Future<void> _salvar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -103,9 +108,7 @@ class _TelaSaudeState extends State<TelaSaude> {
         tipo: _tipo,
         titulo: _tituloController.text,
         dataEvento: _dataEvento,
-        dataProximaDose: _tipo == TipoRegistroSaude.vacina
-            ? _dataProximaDose
-            : null,
+        dataProximaDose: _permiteProximaDose(_tipo) ? _dataProximaDose : null,
         observacoes: _observacoesController.text,
       );
 
@@ -276,7 +279,7 @@ class _TelaSaudeState extends State<TelaSaude> {
                                   if (tipo != null) {
                                     setState(() {
                                       _tipo = tipo;
-                                      if (tipo != TipoRegistroSaude.vacina) {
+                                      if (!_permiteProximaDose(tipo)) {
                                         _dataProximaDose = null;
                                       }
                                     });
@@ -305,7 +308,7 @@ class _TelaSaudeState extends State<TelaSaude> {
                             'Data: ${formatoData.formatShortDate(_dataEvento)}',
                           ),
                         ),
-                        if (_tipo == TipoRegistroSaude.vacina) ...[
+                        if (_permiteProximaDose(_tipo)) ...[
                           const SizedBox(height: 12),
                           OutlinedButton.icon(
                             onPressed: _salvando

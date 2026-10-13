@@ -1,8 +1,9 @@
-enum TipoRegistroSaude { vacina, consulta, medicamento, outro }
+enum TipoRegistroSaude { vacina, vermifugacao, consulta, medicamento, outro }
 
 extension TipoRegistroSaudeTexto on TipoRegistroSaude {
   String get rotulo => switch (this) {
     TipoRegistroSaude.vacina => 'Vacina',
+    TipoRegistroSaude.vermifugacao => 'Vermifugação',
     TipoRegistroSaude.consulta => 'Consulta',
     TipoRegistroSaude.medicamento => 'Medicamento',
     TipoRegistroSaude.outro => 'Outro',
@@ -11,6 +12,7 @@ extension TipoRegistroSaudeTexto on TipoRegistroSaude {
 
 class RegistroSaudeModel {
   final int idRegistro;
+  final String? nomeAutor;
   final TipoRegistroSaude tipo;
   final String titulo;
   final DateTime dataEvento;
@@ -20,6 +22,7 @@ class RegistroSaudeModel {
 
   const RegistroSaudeModel({
     required this.idRegistro,
+    required this.nomeAutor,
     required this.tipo,
     required this.titulo,
     required this.dataEvento,
@@ -31,6 +34,7 @@ class RegistroSaudeModel {
   factory RegistroSaudeModel.fromMap(Map<String, dynamic> dados) {
     return RegistroSaudeModel(
       idRegistro: dados['id_registro'] as int,
+      nomeAutor: dados['nome_autor'] as String,
       tipo: TipoRegistroSaude.values.byName(dados['tipo'] as String),
       titulo: dados['titulo'] as String,
       dataEvento: DateTime.parse(dados['data_evento'] as String),
