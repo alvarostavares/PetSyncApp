@@ -28,6 +28,7 @@ class _TelaSaudeState extends State<TelaSaude> {
   final _observacoesController = TextEditingController();
 
   late Stream<List<RegistroSaudeModel>> _registros;
+  late Future<List<RegistroSaudeModel>> _lembretesFuture;
 
   TipoRegistroSaude _tipo = TipoRegistroSaude.vacina;
   DateTime _dataEvento = DateTime.now();
@@ -35,11 +36,13 @@ class _TelaSaudeState extends State<TelaSaude> {
   bool _mostrarFormulario = false;
   bool _salvando = false;
   int? _idExcluindo;
+  int? _idConcluindo;
 
   @override
   void initState() {
     super.initState();
     _registros = _repositorio.observar(widget.idPet);
+    _lembretesFuture = _repositorio.buscarLembretes(widget.idPet);
   }
 
   @override
@@ -122,6 +125,7 @@ class _TelaSaudeState extends State<TelaSaude> {
         _tipo = TipoRegistroSaude.vacina;
         _dataEvento = DateTime.now();
         _dataProximaDose = null;
+        _lembretesFuture = _repositorio.buscarLembretes(widget.idPet);
       });
 
       ScaffoldMessenger.of(
@@ -147,13 +151,70 @@ class _TelaSaudeState extends State<TelaSaude> {
       }
 
       if (!mounted) return;
-      setState(() => _registros = _repositorio.observar(widget.idPet));
+      setState(() {
+        _registros = _repositorio.observar(widget.idPet);
+        _lembretesFuture = _repositorio.buscarLembretes(widget.idPet);
+      });
     } catch (erro) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Não foi possível reconectar: $erro')),
       );
+    }
+  }
+
+  Future<void> _concluirLembrete(RegistroSaudeModel registro) async {
+    if (_idConcluindo != null || _idExcluindo != null) return;
+
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Concluir lembrete?'),
+        content: Text(
+          'Concluir o lembrete da próxima dose de "${registro.titulo}"? '
+          'Isso não cria um novo registro de aplicação.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Concluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || confirmou != true) return;
+
+    setState(() => _idConcluindo = registro.idRegistro);
+
+    try {
+      await _repositorio.concluirLembrete(
+        idPet: widget.idPet,
+        idRegistro: registro.idRegistro,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _registros = _repositorio.observar(widget.idPet);
+        _lembretesFuture = _repositorio.buscarLembretes(widget.idPet);
+      });
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Lembrete concluído.')));
+    } catch (erro) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível concluir: $erro')),
+      );
+    } finally {
+      if (mounted) setState(() => _idConcluindo = null);
     }
   }
 
@@ -191,6 +252,7 @@ class _TelaSaudeState extends State<TelaSaude> {
       // Garante que esta tela atualize mesmo se o evento DELETE atrasar.
       setState(() {
         _registros = _repositorio.observar(widget.idPet);
+        _lembretesFuture = _repositorio.buscarLembretes(widget.idPet);
       });
 
       ScaffoldMessenger.of(context)
@@ -204,6 +266,12 @@ class _TelaSaudeState extends State<TelaSaude> {
     } finally {
       if (mounted) setState(() => _idExcluindo = null);
     }
+  }
+
+  void _atualizarLembretes() {
+    setState(() {
+      _lembretesFuture = _repositorio.buscarLembretes(widget.idPet);
+    });
   }
 
   @override
@@ -352,8 +420,87 @@ class _TelaSaudeState extends State<TelaSaude> {
                 ),
               ),
             ],
-
             const SizedBox(height: 24),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Próximas doses',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Atualizar próximas doses',
+                  onPressed: _atualizarLembretes,
+                  icon: const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<List<RegistroSaudeModel>>(
+              future: _lembretesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text(
+                    'Não foi possível carregar as próximas doses.',
+                  );
+                }
+
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final lembretes = snapshot.data!;
+
+                if (lembretes.isEmpty) {
+                  return const Text('Nenhuma próxima dose pendente.');
+                }
+
+                final agora = DateTime.now();
+                final hoje = DateTime(agora.year, agora.month, agora.day);
+                final formatoData = MaterialLocalizations.of(context);
+
+                return Column(
+                  children: [
+                    for (final registro in lembretes)
+                      Builder(
+                        builder: (context) {
+                          final data = registro.dataProximaDose!;
+                          final diaDose = DateTime(
+                            data.year,
+                            data.month,
+                            data.day,
+                          );
+
+                          final situacao = diaDose.isBefore(hoje)
+                              ? 'Atrasada'
+                              : diaDose.isAtSameMomentAs(hoje)
+                              ? 'Hoje'
+                              : 'Prevista';
+
+                          return Card(
+                            child: ListTile(
+                              leading: Icon(
+                                diaDose.isBefore(hoje)
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.event,
+                                color: diaDose.isBefore(hoje)
+                                    ? Colors.deepOrange
+                                    : const Color(0xFF2E65F3),
+                              ),
+                              title: Text(registro.titulo),
+                              subtitle: Text(
+                                '${registro.tipo.rotulo} • $situacao: '
+                                '${formatoData.formatShortDate(data)}',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                );
+              },
+            ),
             const Text(
               'Histórico de saúde',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -395,16 +542,39 @@ class _TelaSaudeState extends State<TelaSaude> {
                             '${registro.tipo.rotulo} • '
                             '${formatoData.formatShortDate(registro.dataEvento)}'
                             '${registro.observacoes?.isNotEmpty == true ? '\n${registro.observacoes}' : ''}'
-                            '${registro.dataProximaDose == null ? '' : '\nPróxima dose: ${formatoData.formatShortDate(registro.dataProximaDose!)}'}'
+                            '${registro.dataProximaDose == null ? '' : '\nPróxima dose: ${formatoData.formatShortDate(registro.dataProximaDose!)}${registro.proximaDoseConcluida ? ' (lembrete concluído)' : ' (prevista)'}'}'
                             '\nRegistrado por ${registro.criadoPor == idUsuario ? 'você' : (registro.nomeAutor?.isNotEmpty == true ? registro.nomeAutor! : 'um familiar')}',
                           ),
-                          trailing:
-                              widget.souTutor ||
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (registro.dataProximaDose != null &&
+                                  !registro.proximaDoseConcluida)
+                                IconButton(
+                                  tooltip: 'Concluir lembrete da próxima dose',
+                                  onPressed:
+                                      _idConcluindo != null ||
+                                          _idExcluindo != null
+                                      ? null
+                                      : () => _concluirLembrete(registro),
+                                  icon: _idConcluindo == registro.idRegistro
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.check_circle_outline),
+                                ),
+                              if (widget.souTutor ||
                                   (idUsuario != null &&
-                                      registro.criadoPor == idUsuario)
-                              ? IconButton(
+                                      registro.criadoPor == idUsuario))
+                                IconButton(
                                   tooltip: 'Excluir registro',
-                                  onPressed: _idExcluindo != null
+                                  onPressed:
+                                      _idExcluindo != null ||
+                                          _idConcluindo != null
                                       ? null
                                       : () => _excluirRegistro(registro),
                                   icon: _idExcluindo == registro.idRegistro
@@ -416,8 +586,9 @@ class _TelaSaudeState extends State<TelaSaude> {
                                           ),
                                         )
                                       : const Icon(Icons.delete_outline),
-                                )
-                              : null,
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                   ],

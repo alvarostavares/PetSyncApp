@@ -19,6 +19,7 @@ class RegistroSaudeModel {
   final DateTime? dataProximaDose;
   final String? observacoes;
   final String? criadoPor;
+  final bool proximaDoseConcluida;
 
   const RegistroSaudeModel({
     required this.idRegistro,
@@ -29,6 +30,7 @@ class RegistroSaudeModel {
     required this.dataProximaDose,
     required this.observacoes,
     required this.criadoPor,
+    this.proximaDoseConcluida = false,
   });
 
   factory RegistroSaudeModel.fromMap(Map<String, dynamic> dados) {
@@ -43,6 +45,7 @@ class RegistroSaudeModel {
           : DateTime.parse(dados['data_proxima_dose'] as String),
       observacoes: dados['observacoes'] as String?,
       criadoPor: dados['criado_por'] as String?,
+      proximaDoseConcluida: (dados['proxima_dose_concluida'] as bool?) ?? false,
     );
   }
 }

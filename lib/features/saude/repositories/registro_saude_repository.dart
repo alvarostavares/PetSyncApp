@@ -69,4 +69,34 @@ class RegistroSaudeRepository {
       throw StateError('Registro não encontrado ou exclusão não permitida.');
     }
   }
+
+  Future<List<RegistroSaudeModel>> buscarLembretes(int idPet) async {
+    final List<Map<String, dynamic>> dados = await _supabase
+        .from('registro_saude')
+        .select()
+        .eq('id_pet', idPet)
+        .eq('proxima_dose_concluida', false)
+        .not('data_proxima_dose', 'is', null)
+        .order('data_proxima_dose', ascending: true);
+
+    return dados.map(RegistroSaudeModel.fromMap).toList();
+  }
+
+  Future<void> concluirLembrete({
+    required int idPet,
+    required int idRegistro,
+  }) async {
+    final atualizados = await _supabase
+        .from('registro_saude')
+        .update({'proxima_dose_concluida': true})
+        .eq('id_pet', idPet)
+        .eq('id_registro', idRegistro)
+        .select('id_registro');
+
+    if (atualizados.isEmpty) {
+      throw StateError(
+        'Lembrete não encontrado, já concluído ou acesso não permitido.',
+      );
+    }
+  }
 }
