@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/notificacao_service.dart';
+
 class TelaAjustes extends StatelessWidget {
   const TelaAjustes({super.key});
 
@@ -8,8 +10,7 @@ class TelaAjustes extends StatelessWidget {
     final navegador = Navigator.of(context);
 
     try {
-      await Supabase.instance.client.auth.signOut();
-
+      await NotificacaoService.instancia.sairDaConta();
       if (navegador.mounted) {
         navegador.popUntil((rota) => rota.isFirst);
       }

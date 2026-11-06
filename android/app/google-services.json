@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "752130421784",
+    "project_id": "petsyncapp-219c9",
+    "storage_bucket": "petsyncapp-219c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:752130421784:android:800e6c245012d31f983f6d",
+        "android_client_info": {
+          "package_name": "com.example.petapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdYdgZsWu8c834NYBLtzguPrSIsQoBVqU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

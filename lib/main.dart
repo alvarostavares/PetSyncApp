@@ -7,6 +7,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'features/home/views/tela_inicial.dart'; // Importação da nova tela principal
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
+
+import 'firebase_options.dart';
+import 'core/notificacao_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -15,7 +21,14 @@ Future<void> main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRybWhueXduZ3lzZ2ZnZGZiZm1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzgwMjksImV4cCI6MjEwNDYxNDAyOX0.nsnyEU2nvwiPFxCH1Pxb9dcK_GaOR6QFDRDF8zD-XnA',
   );
 
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+
   runApp(const PetSyncApp());
+  NotificacaoService.instancia.iniciar();
 }
 
 class PetSyncApp extends StatelessWidget {
