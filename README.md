@@ -1,4 +1,4 @@
-# PetApp
+# PetSyncApp
 
 Aplicativo Flutter desenvolvido como parte do Trabalho de Conclusão de Curso de Sistemas de Informação da Universidade Federal de Sergipe (UFS). O projeto busca reunir informações dos pets e permitir que familiares acompanhem seus cuidados em um mesmo lugar.
 
