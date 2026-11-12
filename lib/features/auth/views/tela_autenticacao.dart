@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/mensagens_erro.dart';
+
 class TelaAutenticacao extends StatefulWidget {
   const TelaAutenticacao({super.key});
 
@@ -53,14 +55,13 @@ class _TelaAutenticacaoState extends State<TelaAutenticacao> {
 
       setState(() => _carregando = false);
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(mensagemErro(e))));
     } catch (e) {
       if (!mounted) return;
 
       setState(() => _carregando = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Não foi possível continuar: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensagemErro(e))));
     }
   }
 
@@ -69,6 +70,41 @@ class _TelaAutenticacaoState extends State<TelaAutenticacao> {
     _emailController.dispose();
     _senhaController.dispose();
     super.dispose();
+  }
+
+  Future<void> _recuperarSenha() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Informe seu e-mail primeiro.')),
+      );
+      return;
+    }
+
+    setState(() => _carregando = true);
+
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'petsyncapp://reset-password/',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Confira seu e-mail para abrir o link de redefinição.'),
+        ),
+      );
+    } on AuthException catch (erro) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(erro.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
   }
 
   @override
@@ -119,8 +155,15 @@ class _TelaAutenticacaoState extends State<TelaAutenticacao> {
                       return null;
                     },
                   ),
+                  if (!_cadastrando)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _carregando ? null : _recuperarSenha,
+                        child: const Text('Esqueceu a senha?'),
+                      ),
+                    ),
                   const SizedBox(height: 24),
-
                   ElevatedButton(
                     onPressed: _carregando ? null : _enviar,
                     child: _carregando

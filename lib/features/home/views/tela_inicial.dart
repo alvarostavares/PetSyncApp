@@ -11,6 +11,7 @@ import '../../ajustes/views/tela_ajustes.dart';
 import '../../familia/views/tela_familia.dart';
 import '../../saude/views/tela_saude.dart';
 import '../widgets/acoes_e_linha_do_tempo.dart';
+import '../widgets/sugestoes_preventivas.dart';
 
 class TelaInicial extends StatefulWidget {
   const TelaInicial({super.key});
@@ -244,8 +245,9 @@ class _TelaInicialState extends State<TelaInicial> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _construirCabecalhoCorpo(),
-                    const SizedBox(height: 20),
-                    if (_petAtual != null) _construirDicaPreditiva(),
+                    const SizedBox(height: 24),
+                    if (_petAtual != null)
+                      SugestoesPreventivas(idPet: _petAtual!.idPet),
                     const SizedBox(height: 24),
                     AcoesELinhaDoTempo(idPet: _petAtual?.idPet),
                   ],
@@ -488,43 +490,6 @@ class _TelaInicialState extends State<TelaInicial> with WidgetsBindingObserver {
               color: Colors.white,
               size: 16,
             ), // Ícone alterado para indicar navegação
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _construirDicaPreditiva() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF9E6),
-          borderRadius: BorderRadius.circular(12),
-          border: const Border(left: BorderSide(color: Colors.amber, width: 4)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.lightbulb, color: Colors.amber, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Dica Preditiva (${_petAtual!.raca ?? 'Geral'})',
-                  style: const TextStyle(
-                    color: Color(0xFFB07D00),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Mantenha as vacinas e a hidratação em dia para garantir o bem-estar do seu pet.',
-              style: TextStyle(color: Color(0xFF8C6300), fontSize: 13),
-            ),
           ],
         ),
       ),

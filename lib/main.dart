@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'features/auth/views/tela_autenticacao.dart';
+import 'features/home/views/tela_inicial.dart';
+import 'features/auth/views/tela_nova_senha.dart';
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import 'features/home/views/tela_inicial.dart'; // Importação da nova tela principal
-
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'firebase_options.dart';
 import 'core/notificacao_service.dart';
@@ -38,6 +38,13 @@ class PetSyncApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PetSync',
+      locale: const Locale('pt', 'BR'),
+      supportedLocales: const [Locale('pt', 'BR')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         // Cor baseada no azul do protótipo
@@ -62,6 +69,7 @@ class _PortaAutenticacaoState extends State<PortaAutenticacao> {
 
   StreamSubscription<AuthState>? _assinatura;
   Session? _sessao;
+  bool _redefinindoSenha = false;
 
   @override
   void initState() {
@@ -75,6 +83,12 @@ class _PortaAutenticacaoState extends State<PortaAutenticacao> {
 
         setState(() {
           _sessao = estado.session;
+
+          if (estado.event == AuthChangeEvent.passwordRecovery) {
+            _redefinindoSenha = true;
+          } else if (estado.event == AuthChangeEvent.signedOut) {
+            _redefinindoSenha = false;
+          }
         });
       },
       onError: (Object erro, StackTrace stackTrace) {
@@ -92,6 +106,10 @@ class _PortaAutenticacaoState extends State<PortaAutenticacao> {
   @override
   Widget build(BuildContext context) {
     final sessao = _sessao;
+
+    if (_redefinindoSenha) {
+      return const TelaNovaSenha();
+    }
 
     if (sessao == null) {
       return const TelaAutenticacao();

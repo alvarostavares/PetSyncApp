@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/atividade_model.dart';
 import '../repositories/atividade_repository.dart';
+import '../../../core/mensagens_erro.dart';
 
 class AcoesELinhaDoTempo extends StatefulWidget {
   final int? idPet;
@@ -82,9 +83,8 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
     } catch (erro) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Não foi possível registrar: $erro')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensagemErro(erro))));
     } finally {
       if (mounted) {
         setState(() => _salvando = false);

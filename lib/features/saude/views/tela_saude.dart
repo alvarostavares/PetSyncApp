@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/registro_saude_model.dart';
 import '../repositories/registro_saude_repository.dart';
 import '../views/tela_ficha_emergencia.dart';
+import '../../../core/mensagens_erro.dart';
 
 class TelaSaude extends StatefulWidget {
   final int idPet;
@@ -134,9 +135,11 @@ class _TelaSaudeState extends State<TelaSaude> {
     } catch (erro) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Não foi possível salvar: $erro')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível salvar. ${mensagemErro(erro)}'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
@@ -159,7 +162,9 @@ class _TelaSaudeState extends State<TelaSaude> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Não foi possível reconectar: $erro')),
+        SnackBar(
+          content: Text('Não foi possível reconectar. ${mensagemErro(erro)}'),
+        ),
       );
     }
   }
@@ -211,7 +216,9 @@ class _TelaSaudeState extends State<TelaSaude> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Não foi possível concluir: $erro')),
+        SnackBar(
+          content: Text('Não foi possível concluir: ${mensagemErro(erro)}'),
+        ),
       );
     } finally {
       if (mounted) setState(() => _idConcluindo = null);
@@ -261,7 +268,9 @@ class _TelaSaudeState extends State<TelaSaude> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Não foi possível excluir: $erro')),
+        SnackBar(
+          content: Text('Não foi possível excluir: ${mensagemErro(erro)}'),
+        ),
       );
     } finally {
       if (mounted) setState(() => _idExcluindo = null);
