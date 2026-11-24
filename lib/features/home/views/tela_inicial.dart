@@ -12,6 +12,7 @@ import '../../familia/views/tela_familia.dart';
 import '../../saude/views/tela_saude.dart';
 import '../widgets/acoes_e_linha_do_tempo.dart';
 import '../widgets/sugestoes_preventivas.dart';
+import '../../saude/widgets/lembretes_medicamento.dart';
 
 class TelaInicial extends StatefulWidget {
   const TelaInicial({super.key});
@@ -249,6 +250,12 @@ class _TelaInicialState extends State<TelaInicial> with WidgetsBindingObserver {
                     if (_petAtual != null)
                       SugestoesPreventivas(idPet: _petAtual!.idPet),
                     const SizedBox(height: 24),
+                    if (_petAtual?.idPet != null)
+                      LembretesMedicamento(
+                        idPet: _petAtual!.idPet!,
+                        compacto: true,
+                      ),
+                    const SizedBox(height: 12),
                     AcoesELinhaDoTempo(idPet: _petAtual?.idPet),
                   ],
                 ),
@@ -289,7 +296,7 @@ class _TelaInicialState extends State<TelaInicial> with WidgetsBindingObserver {
               Expanded(
                 // ADICIONADO: Expanded para evitar overflow
                 child: Text(
-                  'Olá, $_nomeDeExibicao! 👋',
+                  'Olá, $_nomeDeExibicao!',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -303,23 +310,6 @@ class _TelaInicialState extends State<TelaInicial> with WidgetsBindingObserver {
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.star, color: Colors.amber, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      '450 pts',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],

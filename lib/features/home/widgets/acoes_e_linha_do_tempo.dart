@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 import '../models/atividade_model.dart';
 import '../repositories/atividade_repository.dart';
@@ -19,6 +20,8 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
 
   Stream<List<AtividadeModel>>? _atividades;
   bool _salvando = false;
+  DateTime _mesEmFoco = DateTime.now();
+  DateTime? _diaSelecionado = DateUtils.dateOnly(DateTime.now());
 
   @override
   void initState() {
@@ -31,13 +34,18 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.idPet != widget.idPet) {
+      _mesEmFoco = DateTime.now();
+      _diaSelecionado = DateUtils.dateOnly(_mesEmFoco);
       _iniciarObservacao();
     }
   }
 
   void _iniciarObservacao() {
     final idPet = widget.idPet;
-    _atividades = idPet == null ? null : _repositorio.observar(idPet);
+
+    _atividades = idPet == null
+        ? null
+        : _repositorio.observarMes(idPet, _mesEmFoco);
   }
 
   String _rotulo(TipoAtividade tipo) {
@@ -282,6 +290,9 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
             const Text('Selecione um pet para ver as atividades.')
           else
             StreamBuilder<List<AtividadeModel>>(
+              key: ValueKey(
+                '${widget.idPet}-${_mesEmFoco.year}-${_mesEmFoco.month}',
+              ),
               stream: _atividades,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
@@ -294,40 +305,94 @@ class _AcoesELinhaDoTempoState extends State<AcoesELinhaDoTempo> {
 
                 final atividades = snapshot.data!;
 
-                if (atividades.isEmpty) {
-                  return const Text(
-                    'Nenhuma atividade registrada para este pet.',
-                  );
+                final atividadesPorDia = <DateTime, List<AtividadeModel>>{};
+
+                for (final atividade in atividades) {
+                  final dia = DateUtils.dateOnly(atividade.ocorridoEm);
+                  (atividadesPorDia[dia] ??= []).add(atividade);
                 }
 
+                final atividadesDoDia = _diaSelecionado == null
+                    ? <AtividadeModel>[]
+                    : (atividadesPorDia[DateUtils.dateOnly(_diaSelecionado!)] ??
+                          <AtividadeModel>[]);
+
                 return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final atividade in atividades)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(_icone(atividade.tipo)),
-                        title: Text(
-                          atividade.tipo == TipoAtividade.remedio
-                              ? 'Remédio: ${atividade.nomeMedicamento ?? 'não informado'}'
-                              : _rotulo(atividade.tipo),
-                        ),
-                        subtitle: Text(
-                          [
-                            if (atividade.tipo == TipoAtividade.remedio &&
-                                atividade.doseInformada?.isNotEmpty == true)
-                              'Dose informada: ${atividade.doseInformada}',
-                            idUsuario != null &&
-                                    atividade.criadoPor == idUsuario
-                                ? 'Registrado por você'
-                                : 'Registrado por ${atividade.nomeAutor?.isNotEmpty == true ? atividade.nomeAutor : 'um familiar'}',
-                          ].join('\n'),
-                        ),
-                        trailing: Text(
-                          '${MaterialLocalizations.of(context).formatShortDate(atividade.ocorridoEm)}\n'
-                          '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(atividade.ocorridoEm))}',
-                          textAlign: TextAlign.end,
-                        ),
+                    TableCalendar<AtividadeModel>(
+                      locale: 'pt_BR',
+                      firstDay: DateTime(2000),
+                      lastDay: DateTime.now(),
+                      focusedDay: _mesEmFoco,
+                      calendarFormat: CalendarFormat.month,
+                      headerStyle: const HeaderStyle(
+                        titleCentered: true,
+                        formatButtonVisible: false,
                       ),
+                      calendarStyle: const CalendarStyle(
+                        outsideDaysVisible: false,
+                      ),
+                      selectedDayPredicate: (dia) =>
+                          isSameDay(_diaSelecionado, dia),
+                      eventLoader: (dia) =>
+                          atividadesPorDia[DateUtils.dateOnly(dia)] ??
+                          <AtividadeModel>[],
+                      onDaySelected: (diaSelecionado, diaEmFoco) {
+                        setState(() {
+                          _diaSelecionado = DateUtils.dateOnly(diaSelecionado);
+                          _mesEmFoco = diaEmFoco;
+                        });
+                      },
+                      onPageChanged: (diaEmFoco) {
+                        setState(() {
+                          _mesEmFoco = diaEmFoco;
+                          _diaSelecionado = null;
+                          _iniciarObservacao();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (_diaSelecionado == null)
+                      const Text('Selecione um dia para ver as atividades.')
+                    else ...[
+                      Text(
+                        'Atividades de ${MaterialLocalizations.of(context).formatMediumDate(_diaSelecionado!)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+
+                      if (atividadesDoDia.isEmpty)
+                        const Text('Nenhuma atividade registrada neste dia.'),
+
+                      for (final atividade in atividadesDoDia)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(_icone(atividade.tipo)),
+                          title: Text(
+                            atividade.tipo == TipoAtividade.remedio
+                                ? 'Remédio: ${atividade.nomeMedicamento ?? 'não informado'}'
+                                : _rotulo(atividade.tipo),
+                          ),
+                          subtitle: Text(
+                            [
+                              if (atividade.tipo == TipoAtividade.remedio &&
+                                  atividade.doseInformada?.isNotEmpty == true)
+                                'Dose informada: ${atividade.doseInformada}',
+                              idUsuario != null &&
+                                      atividade.criadoPor == idUsuario
+                                  ? 'Registrado por você'
+                                  : 'Registrado por ${atividade.nomeAutor?.isNotEmpty == true ? atividade.nomeAutor : 'um familiar'}',
+                            ].join('\n'),
+                          ),
+                          trailing: Text(
+                            '${MaterialLocalizations.of(context).formatShortDate(atividade.ocorridoEm)}\n'
+                            '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(atividade.ocorridoEm))}',
+                            textAlign: TextAlign.end,
+                          ),
+                        ),
+                    ],
                   ],
                 );
               },

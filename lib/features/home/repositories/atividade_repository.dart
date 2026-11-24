@@ -51,4 +51,23 @@ class AtividadeRepository {
               .toList(),
         );
   }
+
+  Stream<List<AtividadeModel>> observarMes(int idPet, DateTime mes) {
+    // O intervalo corresponde ao mês visto no horário local do aparelho.
+    final inicioLocal = DateTime(mes.year, mes.month, 1);
+    final fimLocal = DateTime(mes.year, mes.month + 1, 1);
+
+    return _supabase
+        .from('atividade_pet')
+        .stream(primaryKey: ['id_atividade'])
+        .eq('id_pet', idPet)
+        .gte('ocorrido_em', inicioLocal.toUtc().toIso8601String())
+        .lt('ocorrido_em', fimLocal.toUtc().toIso8601String())
+        .order('ocorrido_em', ascending: false)
+        .map(
+          (registros) => registros
+              .map((registro) => AtividadeModel.fromMap(registro))
+              .toList(),
+        );
+  }
 }

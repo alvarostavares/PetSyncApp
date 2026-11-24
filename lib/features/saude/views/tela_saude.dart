@@ -5,6 +5,7 @@ import '../models/registro_saude_model.dart';
 import '../repositories/registro_saude_repository.dart';
 import '../views/tela_ficha_emergencia.dart';
 import '../../../core/mensagens_erro.dart';
+import '../widgets/lembretes_medicamento.dart';
 
 class TelaSaude extends StatefulWidget {
   final int idPet;
@@ -429,6 +430,11 @@ class _TelaSaudeState extends State<TelaSaude> {
                 ),
               ),
             ],
+            const SizedBox(height: 24),
+            LembretesMedicamento(
+              idPet: widget.idPet,
+              souTutor: widget.souTutor,
+            ),
             const SizedBox(height: 24),
             Row(
               children: [
